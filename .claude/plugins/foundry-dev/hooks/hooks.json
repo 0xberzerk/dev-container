@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/block-dangerous-commands.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-sol-format.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check the conversation transcript. If any .tree or .t.sol files were created or modified during this session, respond with {\"decision\": \"block\", \"reason\": \"You modified .tree/.t.sol files this session. Run `bulloak check test/**/*.tree` to verify tree/test sync before finishing.\"}. If no .tree or .t.sol files were touched, respond with {\"decision\": \"allow\"}.",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

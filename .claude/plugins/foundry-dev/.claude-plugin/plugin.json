@@ -1,0 +1,11 @@
+{
+  "name": "foundry-dev",
+  "description": "Foundry/Solidity development workflows: conventional commits, BTT testing, contract review, and safety guardrails",
+  "version": "1.0.0",
+  "author": {
+    "name": "0xBerzerk"
+  },
+  "keywords": ["foundry", "solidity", "testing", "btt", "solhint"],
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json"
+}

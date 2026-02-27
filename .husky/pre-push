@@ -1,0 +1,14 @@
+branch=$(git rev-parse --abbrev-ref HEAD)
+pattern="^(feat|fix|chore|docs|test|refactor|hotfix|ci|perf|style|build|revert|setup)/[a-z0-9._-]+$"
+
+if [ "$branch" = "main" ] || [ "$branch" = "develop" ]; then
+  exit 0
+fi
+
+if ! echo "$branch" | grep -qE "$pattern"; then
+  echo "Branch name '$branch' does not match pattern: type/description"
+  echo "Allowed prefixes: feat/, fix/, chore/, docs/, test/, refactor/, hotfix/, ci/, perf/, style/, build/, revert/, setup/"
+  exit 1
+fi
+
+forge test

@@ -1,0 +1,7 @@
+IncrementUnitTest
+├── given the number is zero
+│   ├── it should set number to one.
+│   └── it should emit an Incremented event.
+└── given the number is not zero
+    ├── it should increment by one.
+    └── it should emit an Incremented event.

@@ -1,0 +1,31 @@
+name: Slither
+
+permissions: {}
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.2
+        with:
+          solc-version: '0.8.30'
+          node-version: '22'
+          fail-on: high
+          slither-args: --exclude-dependencies --filter-paths "./lib|./test"

@@ -1,0 +1,5 @@
+SetThenIncrementIntegrationTest
+└── given the initial number is set via setNumber
+    └── when increment is called after setting
+        ├── it should reflect both operations.
+        └── it should maintain correct accumulated state.
