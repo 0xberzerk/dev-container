@@ -5,32 +5,38 @@ import { Test } from 'forge-std/Test.sol';
 
 /**
  * @title BaseTest
- * @notice Global base test contract. All test contracts inherit from this.
+ * @notice Global base test contract for security auditing.
  * @author 0xBerzerk
- * @dev Responsibilities:
- *   - Create named test actors via makeAddr() for readable traces
- *   - Fund actors with ETH
- *   - Provide a virtual setUp() that child contracts extend
+ * @dev Provides common actors for exploit scenarios:
+ *   - attacker: adversarial actor (untrusted)
+ *   - victim: target of the exploit
+ *   - admin: protocol administrator (privileged)
+ *   - protocolOwner: protocol owner (highest privilege)
+ *   All actors funded with 100 ETH by default.
  */
 abstract contract BaseTest is Test {
   /* ////////////////////////////////////////////////
-                        Actors
+                      Actors
   ////////////////////////////////////////////////*/
 
-  address internal alice;
-  address internal bob;
+  address internal attacker;
+  address internal victim;
+  address internal admin;
+  address internal protocolOwner;
 
   /* ////////////////////////////////////////////////
-                        Set up
+                      Set up
   ////////////////////////////////////////////////*/
 
   function setUp() public virtual {
-    // Create named actors — traces show "alice" / "bob" instead of raw addresses
-    alice = makeAddr('alice');
-    bob = makeAddr('bob');
+    attacker = makeAddr('attacker');
+    victim = makeAddr('victim');
+    admin = makeAddr('admin');
+    protocolOwner = makeAddr('protocolOwner');
 
-    // Fund actors
-    vm.deal(alice, 100 ether);
-    vm.deal(bob, 100 ether);
+    vm.deal(attacker, 100 ether);
+    vm.deal(victim, 100 ether);
+    vm.deal(admin, 100 ether);
+    vm.deal(protocolOwner, 100 ether);
   }
 }
