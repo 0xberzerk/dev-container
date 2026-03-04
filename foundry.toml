@@ -10,23 +10,15 @@ evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
 
-gas_reports = ["*"]
 verbosity = 3
 
 fuzz = { runs = 5_000 }
 invariant = { runs = 256, depth = 100 }
 
-# Skip integration (fork) tests in local runs for speed.
-# Run them explicitly: FOUNDRY_PROFILE=integration forge test --match-path 'test/integration/**'
-no_match_path = "test/integration/**"
-
 [profile.ci]
 verbosity = 3
 fuzz = { runs = 10_000 }
 invariant = { runs = 512, depth = 200 }
-
-[profile.integration]
-fuzz = { runs = 1_000 }
 
 [fmt]
 tab_width = 2
@@ -45,4 +37,3 @@ pow_no_space = true
 
 docs_style = "block"
 wrap_comments = true
-

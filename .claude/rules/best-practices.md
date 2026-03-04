@@ -1,52 +1,61 @@
-# Solidity Best Practices
+# Security Review Focus Areas
 
-## Gas Optimizations
+## What to Look For
 
-- **Errors:** custom errors only, never `require("string")`
-- **Modifiers:** to avoid duplicated checks only. Never use for single application
-- **Increment:** always use `++i` instead of `i++` or `variable = variable + 1`
-- **Storage packing:** pack smaller variables together in structs when possible
-- **Bytes:** prefer `bytes32` over `string` for fixed-length data
-- **Cache storage reads:** read storage once into a local variable, reuse the copy — avoid redundant SLOADs
-- **Structs handling:** Avoid copying whole structures into memory when few struct components are used, use storage pointer instead
-- **Immutable/constant:** use `immutable` for values set once at construction, `constant` for compile-time values
+The goal is not to check if code follows conventions. It's to find the small thing that, under a specific condition, triggers a massive loss.
 
-## Magic Numbers
+### State Machine Inconsistencies
+- Can the contract reach a state the developer didn't anticipate?
+- Are there unreachable states that should be reachable, or vice versa?
+- Can state transitions be forced out of order?
 
-- Never use raw numeric literals in logic — define named `constant` or `immutable` variables
-- Acceptable exceptions: `0`, `1`, common bases like `1e18`, and type bounds like `type(uint128).max`
+### Trust Boundary Violations
+- Where does the code assume trusted input from untrusted sources?
+- Are there privilege escalation paths through chained calls?
+- Can an unprivileged user trigger a privileged code path indirectly?
 
-## Security Patterns
+### Edge Condition Interactions
+- What happens when two features interact at boundary values?
+- Are there off-by-one errors at min/max boundaries?
+- What about empty arrays, zero amounts, max uint values?
 
-- Check-Effects-Interactions pattern for external calls
-- Use `ReentrancyGuard` or equivalent when calling untrusted contracts
-- Validate all external inputs at system boundaries
-- Be aware of weird erc20 tokens and its unique behaviors, use `SafeERC20` for broader handling
-- Prefer pull over push for ETH transfers
-- Never trust return values from arbitrary external calls without validation
-- Set gas limits on external calls to untrusted contracts
-- Handle `address(0)` checks before external calls
+### Reentrancy Paths
+- Not just the obvious single-function reentrancy — look for cross-function and cross-contract paths
+- Read-only reentrancy (view functions returning stale state during external calls)
+- State corruption through callback ordering
 
-## Access Control
+### Oracle and Price Manipulation
+- Stale data windows (how old can oracle data be?)
+- Sandwich opportunities around price-sensitive operations
+- TWAP manipulation feasibility (liquidity depth vs. manipulation cost)
+- Fallback oracle behavior — what happens when the primary fails?
 
-- Use `Ownable2Step` over `Ownable` — prevents accidental ownership transfer to wrong address
-- Prefer role-based access (`AccessControl`) over single-owner for multi-permission systems
+### Rounding and Precision Loss
+- Truncation that only matters at specific boundaries (first deposit, last withdrawal)
+- Division before multiplication chains
+- Accumulator drift over many operations
+- Share price manipulation in vault-like contracts
 
-## Upgradability
+### Access Control Gaps
+- Missing checks on state-changing functions
+- Unprotected initializers (especially in proxy patterns)
+- Privilege escalation through role manipulation
+- Time-locked operations that can be bypassed
 
-- If using proxies, follow storage gap pattern (`uint256[50] private __gap`)
-- Never leave implementation contracts uninitialized — call `_disableInitializers()` in constructor
+### Token Assumption Failures
+- Fee-on-transfer tokens breaking balance accounting
+- Rebasing tokens corrupting share calculations
+- Tokens with blocklists (USDC, USDT) causing DoS
+- Missing return value checks (non-standard ERC20)
+- Tokens with different decimals than expected
 
-## Error Handling
+### Temporal Dependencies
+- `block.timestamp` manipulation windows (up to ~12s on Ethereum)
+- Deadline bypasses through frontrunning
+- Ordering assumptions that MEV can violate
 
-- Revert early — place revert/validation checks at the top of functions
-- Use descriptive error parameters (`Counter_InsufficientBalance(uint256 requested, uint256 available)`)
-
-## Design Patterns
-
-- Prefer composition over inheritance when possible
-- Keep contracts focused — single responsibility
-- Use interfaces for cross-contract communication
-- Emit events for all state-changing operations
-- Design for testability — avoid deep internal coupling that requires testing private functions
-- Keep deployment logic in scripts, not in constructors
+### Economic Invariant Violations
+- Can an attacker extract more value than they deposit?
+- Flash loan attack vectors (borrow → manipulate → profit → repay in one tx)
+- Donation attacks on share-based systems
+- Griefing attacks (making operations unprofitable for others)
