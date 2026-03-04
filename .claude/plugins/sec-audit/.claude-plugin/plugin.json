@@ -1,0 +1,11 @@
+{
+  "name": "sec-audit",
+  "description": "Security audit workflows: agent pipeline orchestration, vulnerability analysis, POC generation, and audit feedback loops",
+  "version": "0.1.0",
+  "author": {
+    "name": "0xBerzerk"
+  },
+  "keywords": ["security", "audit", "solidity", "foundry", "slither", "fuzzing"],
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json"
+}

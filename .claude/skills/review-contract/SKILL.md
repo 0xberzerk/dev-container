@@ -1,81 +1,68 @@
 ---
 name: review-contract
-description: |
-  Review a Solidity contract against project conventions for naming, NatSpec,
-  gas patterns, security, and style. Use when checking code quality or reviewing
-  contracts before merging.
-user-invocable: true
+description: "Security-focused review of a Solidity contract. Analyzes for vulnerabilities, state machine inconsistencies, trust boundary violations, and exploit scenarios. Not a style checker — focused on finding what breaks."
+user-invokable: true
 disable-model-invocation: true
 argument-hint: "[path/to/Contract.sol]"
 ---
 
-# Contract Review
+# Security Review
 
-Review the Solidity contract at `$ARGUMENTS` against all project conventions.
+Review the Solidity contract at `$ARGUMENTS` for security vulnerabilities.
 
 ## Setup
 
-Before reviewing, read these rule files to load the project standards:
+Before reviewing, read the project rules:
 
-1. `.claude/rules/solidity-style.md` — naming, layout, NatSpec, pragma, imports
-2. `.claude/rules/best-practices.md` — gas, security, access control, design
-3. `.claude/rules/guardrails.md` — secrets, hardcoded values
+1. `.claude/rules/best-practices.md` — security review focus areas
+2. `.claude/rules/guardrails.md` — secrets, hardcoded values
 
 ## Review Checklist
 
-### 1. Style Compliance
-- Pragma version: `0.8.30` (exact) for src/scripts, `>=0.8.20 <0.9.0` for interfaces/libraries/tests
-- Imports: absolute paths only (`import { X } from 'src/X.sol';`)
-- Naming: contracts (PascalCase), interfaces (`I` prefix), libraries (`Lib` prefix),
-  state vars (`s_` prefix), params (`_` prefix), returns (`_` suffix),
-  errors (`Contract_ErrorName`), events (PascalCase with indexed `_` params)
-- Section headers: `/* //////////////////////////////////////////////// */`
-- NatSpec: `@title`, `@notice`, `@author` on contracts; `@notice`, `@param`, `@return` on functions
+### 1. State Machine Analysis
+- Map all state transitions — can any be forced out of order?
+- Are there unreachable states that should be reachable?
+- Can state be corrupted through unexpected call sequences?
 
-### 2. Contract Layout Order
-Verify sections appear in this order:
-1. Type declarations  2. State variables  3. Events  4. Errors
-5. Modifiers  6. Constructor  7. Receive/fallback  8. External functions
-9. Public functions  10. Internal functions  11. Private functions
-(view/pure after state-changing within each group)
+### 2. Trust Boundaries
+- Who can call each external/public function?
+- Are there privilege escalation paths?
+- Where does the code assume trusted input from untrusted sources?
+- Are there unprotected initializers?
 
-### 3. Gas Patterns
-- Custom errors only (never `require("string")`)
-- `++i` not `i++`
-- Storage packing in structs
-- `bytes32` over `string` for fixed-length
-- Cache storage reads into local variables
-- `immutable` for constructor-set values, `constant` for compile-time
-- No magic numbers (except 0, 1, 1e18, type bounds)
+### 3. Value Flow
+- Track all value movements (ETH, tokens, shares)
+- Can an attacker extract more value than they should?
+- Are there rounding issues at boundaries (first deposit, last withdrawal)?
+- Flash loan attack vectors?
 
-### 4. Security
-- Check-Effects-Interactions pattern
-- ReentrancyGuard for untrusted external calls
-- Input validation at system boundaries
-- `address(0)` checks before external calls
-- SafeERC20 for token interactions
-- Pull over push for ETH transfers
-- Ownable2Step over Ownable
-- No hardcoded addresses, keys, or secrets
+### 4. External Interactions
+- Check-Effects-Interactions pattern compliance
+- Reentrancy paths (single, cross-function, cross-contract, read-only)
+- Unchecked return values on external calls
+- Token assumption failures (fee-on-transfer, rebasing, blocklists)
 
-### 5. Design
-- Single responsibility
-- Composition over inheritance
-- Events for all state changes
-- Revert early (checks at top of functions)
-- Descriptive error parameters
+### 5. Access Control
+- Missing checks on state-changing functions
+- Role manipulation paths
+- Time-lock bypasses
+
+### 6. Edge Conditions
+- Zero amounts, empty arrays, max uint values
+- Division by zero paths
+- Overflow at boundary values (even with Solidity 0.8+ checked math)
 
 ## Output Format
 
 Organize findings by severity:
 
-**Errors** (must fix before merge)
-- [finding with file:line reference and the specific rule violated]
+**Critical** (direct fund loss or protocol compromise)
+- [finding with file:line, exploit scenario, and impact]
 
-**Warnings** (should fix)
+**High** (conditional fund loss or significant protocol disruption)
 - [finding]
 
-**Notes** (consider improving)
+**Medium** (unexpected behavior, griefing, or value leakage under specific conditions)
 - [finding]
 
-If the contract is clean, say so explicitly.
+If the contract is clean, say so — but explain what you checked and why you're confident.
