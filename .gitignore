@@ -32,3 +32,6 @@ KnowledgeBase/
 
 # Audit reports (generated)
 reports/
+
+# MCP server build artifacts
+.claude/mcp-servers/*/target/
