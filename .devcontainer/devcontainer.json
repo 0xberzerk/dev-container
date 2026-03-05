@@ -1,0 +1,29 @@
+{
+  "name": "Solidity Audit Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "NomicFoundation.hardhat-solidity",
+        "tintinweb.solidity-visual-auditor",
+        "trailofbits.slither-vscode",
+        "Cyfrin.aderyn",
+        "trailofbits.weaudit",
+        "Recon-Fuzz.recon"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "slither.slitherPath": "/opt/audit-venv/bin/slither",
+        "telemetry.telemetryLevel": "off"
+      }
+    }
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.foundry/bin:/opt/audit-venv/bin:/usr/local/bin:${containerEnv:PATH}"
+  },
+  "postCreateCommand": "forge --version && slither --version && aderyn --version && echidna --version && medusa --version && halmos --version",
+  "postStartCommand": "[ -f .env ] && set -a && source .env && set +a || true"
+}

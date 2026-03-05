@@ -552,10 +552,27 @@ Focus areas for the review approach:
 - [ ] Install Chimera / Recon tooling (research exact install steps — see docs: https://github.com/Recon-Fuzz/recon-docs)
 - [ ] Install Echidna, Medusa, Halmos (Chimera deps)
 
-### 2. Network Isolation
-- [ ] Define network restriction strategy (Docker network mode, iptables, or DNS-based)
-- [ ] Whitelist: package registries (npm, pypi, crates.io), RPC endpoints
+### 2. Network Isolation (DEFERRED)
+
+Deferred until the core tooling is running. Layer in as a separate Docker Compose profile.
+
+**Decision notes:**
+- Base approach: custom Docker bridge network + domain-level proxy (e.g., Squid) for whitelisting
+- DNS-based is simpler but bypassable via hardcoded IPs — not sufficient alone
+- iptables inside the container is brittle and hard to maintain
+- Default state: no internet access, whitelist only what's needed
+
+**Whitelist targets:**
+- Package registries: PyPI, crates.io, GitHub (foundryup, forge install)
+- RPC endpoints: Alchemy, Infura, Tenderly (auditor-configured)
+- Solodit API (KB pipeline)
+
+**TODO when revisited:**
+- [ ] Define network restriction strategy (Docker Compose profile with proxy)
+- [ ] Whitelist: package registries, RPC endpoints, Solodit API
 - [ ] Document how to add custom whitelist entries
+- [ ] Test: verify forge install, pip install, cargo install work through the proxy
+- [ ] Test: verify arbitrary outbound connections are blocked
 
 ### 3. Repo Cleanup (execute Drop + Adapt lists above)
 - [ ] Remove all items from the Drop list
