@@ -382,24 +382,9 @@ impl SoloditClient {
             return Ok(cached);
         }
 
-        // Solodit doesn't have a dedicated tags endpoint — fetch from a broad search
-        // and collect unique tags, or use a known list
         self.rate_limiter.acquire().await;
         let url = format!("{}/tags", API_BASE);
-        let response = self.http.get(&url).send().await;
-
-        let result = match response {
-            Ok(resp) if resp.status().is_success() => {
-                resp.json::<serde_json::Value>()
-                    .await
-                    .context("Failed to parse tags response")?
-            }
-            _ => {
-                // Fallback: return known major tags relevant to security auditing
-                warn!("Tags endpoint not available, returning known tags");
-                serde_json::json!(known_tags())
-            }
-        };
+        let result = self.get_with_fallback(&url, serde_json::json!(known_tags())).await?;
 
         self.cache.set(cache_key, result.clone(), METADATA_TTL).await;
         Ok(result)
@@ -415,22 +400,44 @@ impl SoloditClient {
 
         self.rate_limiter.acquire().await;
         let url = format!("{}/protocol-categories", API_BASE);
-        let response = self.http.get(&url).send().await;
-
-        let result = match response {
-            Ok(resp) if resp.status().is_success() => {
-                resp.json::<serde_json::Value>()
-                    .await
-                    .context("Failed to parse categories response")?
-            }
-            _ => {
-                warn!("Categories endpoint not available, returning known categories");
-                serde_json::json!(known_protocol_categories())
-            }
-        };
+        let result = self
+            .get_with_fallback(&url, serde_json::json!(known_protocol_categories()))
+            .await?;
 
         self.cache.set(cache_key, result.clone(), METADATA_TTL).await;
         Ok(result)
+    }
+
+    /// GET with fallback for non-auth errors only. Auth failures (401/403) propagate as errors.
+    async fn get_with_fallback(
+        &self,
+        url: &str,
+        fallback: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let response = self.http.get(url).send().await;
+
+        match response {
+            Ok(resp) => {
+                let status = resp.status();
+                if status == reqwest::StatusCode::UNAUTHORIZED
+                    || status == reqwest::StatusCode::FORBIDDEN
+                {
+                    anyhow::bail!("Authentication failed — check CYFRIN_API_KEY");
+                }
+                if status.is_success() {
+                    return resp
+                        .json::<serde_json::Value>()
+                        .await
+                        .context("Failed to parse response");
+                }
+                warn!("GET {} returned {}, using fallback", url, status);
+                Ok(fallback)
+            }
+            Err(e) => {
+                warn!("GET {} failed: {}, using fallback", url, e);
+                Ok(fallback)
+            }
+        }
     }
 
     async fn post_with_retry(
@@ -891,25 +898,37 @@ mod tests {
         assert!(!findings.is_empty(), "Expected ERC4626+HIGH results");
     }
 
-    #[tokio::test]
-    #[ignore]
-    async fn live_list_tags() {
-        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
-        let client = SoloditClient::new(&api_key).unwrap();
-        let result = client.list_tags().await.unwrap();
+    // NOTE: /tags and /protocol-categories endpoints don't exist in the Solodit API (404).
+    // list_tags and list_protocol_categories always use the hardcoded fallback.
+    // No live tests for those — the fallback path is covered by unit tests below.
 
-        let tags = result.as_array().unwrap();
-        assert!(tags.len() > 10, "Expected many tags");
+    #[test]
+    fn fallback_tags_returns_known_tags() {
+        // Ensures the fallback list stays non-empty and covers key audit categories
+        let tags = known_tags();
+        assert!(tags.len() > 30);
+        assert!(tags.contains(&"Reentrancy"));
+        assert!(tags.contains(&"ERC4626"));
+        assert!(tags.contains(&"Flash Loan"));
+        assert!(tags.contains(&"Oracle"));
+    }
+
+    #[test]
+    fn fallback_categories_returns_known_categories() {
+        let cats = known_protocol_categories();
+        assert!(cats.len() > 10);
+        assert!(cats.contains(&"Lending"));
+        assert!(cats.contains(&"Dexes"));
+        assert!(cats.contains(&"Bridge"));
     }
 
     #[tokio::test]
     #[ignore]
-    async fn live_list_protocol_categories() {
-        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
-        let client = SoloditClient::new(&api_key).unwrap();
-        let result = client.list_protocol_categories().await.unwrap();
-
-        let cats = result.as_array().unwrap();
-        assert!(cats.len() > 5, "Expected many categories");
+    async fn live_search_fails_with_bad_key() {
+        let client = SoloditClient::new("invalid_key").unwrap();
+        let result = client
+            .search_findings("reentrancy", None, None, None, None, "Quality", "Desc", 1, 1)
+            .await;
+        assert!(result.is_err(), "Bad API key should fail on search");
     }
 }
