@@ -1,10 +1,7 @@
 {
   "mcpServers": {
     "solodit": {
-      "command": ".claude/mcp-servers/solodit/target/release/solodit-mcp",
-      "env": {
-        "CYFRIN_API_KEY": "${CYFRIN_API_KEY}"
-      }
+      "command": ".claude/mcp-servers/solodit/run.sh"
     }
   }
 }
