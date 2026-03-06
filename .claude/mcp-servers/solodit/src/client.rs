@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 const API_BASE: &str = "https://solodit.cyfrin.io/api/v1/solodit";
-const ALLOWED_IMPACTS: &[&str] = &["CRITICAL", "HIGH", "MEDIUM"];
+const ALLOWED_IMPACTS: &[&str] = &["HIGH", "MEDIUM"];
 
 // Cache TTLs
 const SEARCH_TTL: Duration = Duration::from_secs(300); // 5 minutes
@@ -112,15 +112,24 @@ pub struct SearchFilters {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub impact: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>,
+    pub tags: Vec<TagFilter>,
     #[serde(rename = "protocolCategories", skip_serializing_if = "Vec::is_empty")]
     pub protocol_categories: Vec<String>,
-    pub languages: Vec<String>,
+    pub languages: Vec<LanguageFilter>,
     #[serde(rename = "sortField")]
     pub sort_field: String,
     #[serde(rename = "sortDirection")]
     pub sort_direction: String,
 }
+
+#[derive(Debug, Serialize)]
+pub struct ValueFilter {
+    pub value: String,
+}
+
+// Type aliases for clarity
+pub type LanguageFilter = ValueFilter;
+pub type TagFilter = ValueFilter;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Finding {
@@ -131,25 +140,78 @@ pub struct Finding {
     #[serde(default)]
     pub impact: String,
     #[serde(default)]
-    pub tags: Vec<String>,
-    #[serde(default, rename = "protocolCategory")]
-    pub protocol_category: String,
-    #[serde(default, rename = "qualityScore")]
     pub quality_score: f64,
-    #[serde(default, rename = "auditFirm")]
-    pub audit_firm: String,
     #[serde(default)]
-    pub protocol: String,
+    pub firm_name: String,
+    #[serde(default)]
+    pub protocol_name: String,
+    #[serde(default)]
+    pub summary: Option<String>,
     #[serde(default)]
     pub content: Option<String>,
+    #[serde(default)]
+    pub issues_issuetagscore: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub protocols_protocol: Option<serde_json::Value>,
+}
+
+/// Compact finding format for search results (strips verbose nested data)
+#[derive(Debug, Serialize)]
+struct CompactFinding {
+    slug: String,
+    title: String,
+    impact: String,
+    quality_score: f64,
+    firm: String,
+    protocol: String,
+    tags: Vec<String>,
+    category: String,
+    summary: Option<String>,
+}
+
+impl From<&Finding> for CompactFinding {
+    fn from(f: &Finding) -> Self {
+        let tags: Vec<String> = f
+            .issues_issuetagscore
+            .iter()
+            .filter_map(|t| {
+                t.get("tags_tag")
+                    .and_then(|tt| tt.get("title"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+            })
+            .collect();
+
+        let category = f
+            .protocols_protocol
+            .as_ref()
+            .and_then(|p| p.get("protocols_protocolcategoryscore"))
+            .and_then(|cats| cats.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|c| c.get("protocols_protocolcategory"))
+            .and_then(|pc| pc.get("title"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        CompactFinding {
+            slug: f.slug.clone(),
+            title: f.title.clone(),
+            impact: f.impact.clone(),
+            quality_score: f.quality_score,
+            firm: f.firm_name.clone(),
+            protocol: f.protocol_name.clone(),
+            tags,
+            category,
+            summary: f.summary.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse {
     #[serde(default)]
     pub findings: Vec<Finding>,
-    #[serde(default)]
-    pub total: u64,
 }
 
 // -- Client --
@@ -202,9 +264,16 @@ impl SoloditClient {
             filters: SearchFilters {
                 keywords: keywords.to_string(),
                 impact: impact.clone(),
-                tags: tags.clone().unwrap_or_default(),
+                tags: tags
+                    .clone()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|v| TagFilter { value: v })
+                    .collect(),
                 protocol_categories: protocol_categories.clone().unwrap_or_default(),
-                languages: vec!["Solidity".to_string()],
+                languages: vec![LanguageFilter {
+                    value: "Solidity".to_string(),
+                }],
                 sort_field: sort_field.to_string(),
                 sort_direction: sort_direction.to_string(),
             },
@@ -232,9 +301,15 @@ impl SoloditClient {
             search_response.findings.retain(|f| f.quality_score >= min_q as f64);
         }
 
+        let compact: Vec<CompactFinding> = search_response
+            .findings
+            .iter()
+            .map(CompactFinding::from)
+            .collect();
+
         let result = serde_json::json!({
-            "findings": search_response.findings,
-            "total": search_response.total,
+            "findings": compact,
+            "count": compact.len(),
             "page": page,
             "page_size": page_size,
         });
@@ -251,33 +326,48 @@ impl SoloditClient {
             return Ok(cached);
         }
 
-        // Try direct endpoint first, fall back to search-by-slug
+        // Search by slug as keyword and match exact slug in results
         self.rate_limiter.acquire().await;
-        let url = format!("{}/findings/{}", API_BASE, slug);
-        let response = self.http.get(&url).send().await;
 
-        let result = match response {
-            Ok(resp) if resp.status().is_success() => {
-                resp.json::<serde_json::Value>()
-                    .await
-                    .context("Failed to parse finding response")?
-            }
-            _ => {
-                // Fallback: search by slug as keyword
-                warn!("Direct finding endpoint failed for '{}', falling back to search", slug);
-                let search = self
-                    .search_findings(slug, None, None, None, None, "Quality", "Desc", 1, 5)
-                    .await?;
+        // Extract a meaningful keyword from the slug (first segment before the firm name)
+        let keyword = slug
+            .split('-')
+            .take(5)
+            .collect::<Vec<_>>()
+            .join(" ");
 
-                let findings = search["findings"].as_array();
-                match findings.and_then(|f| f.iter().find(|f| f["slug"].as_str() == Some(slug))) {
-                    Some(finding) => finding.clone(),
-                    None => serde_json::json!({
-                        "error": "not_found",
-                        "message": format!("Finding '{}' not found", slug),
-                    }),
-                }
-            }
+        let request = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: keyword,
+                impact: vec![],
+                tags: vec![],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter {
+                    value: "Solidity".to_string(),
+                }],
+                sort_field: "Quality".to_string(),
+                sort_direction: "Desc".to_string(),
+            },
+        };
+
+        let response = self
+            .post_with_retry(&format!("{}/findings", API_BASE), &request)
+            .await?;
+
+        let search_response: SearchResponse = response
+            .json()
+            .await
+            .context("Failed to parse search response")?;
+
+        let result = match search_response.findings.iter().find(|f| f.slug == slug) {
+            Some(finding) => serde_json::to_value(finding)
+                .context("Failed to serialize finding")?,
+            None => serde_json::json!({
+                "error": "not_found",
+                "message": format!("Finding '{}' not found", slug),
+            }),
         };
 
         self.cache.set(cache_key, result.clone(), FINDING_TTL).await;

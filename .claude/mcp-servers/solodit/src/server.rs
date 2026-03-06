@@ -22,8 +22,8 @@ pub struct SearchFindingsParams {
     #[serde(default)]
     pub keywords: String,
 
-    /// Severity filter. Only CRITICAL, HIGH, MEDIUM are allowed — others are silently stripped.
-    /// Defaults to all three if omitted or empty after filtering.
+    /// Severity filter. Only HIGH and MEDIUM are allowed — others are silently stripped.
+    /// Defaults to both if omitted or empty after filtering.
     #[serde(default)]
     pub impact: Option<Vec<String>>,
 
@@ -86,7 +86,7 @@ impl SoloditServer {
         }
     }
 
-    #[tool(description = "Search the Solodit vulnerability database for known smart contract security findings. Filter by severity, vulnerability tags, and protocol category. Only CRITICAL, HIGH, and MEDIUM severity findings are returned.")]
+    #[tool(description = "Search the Solodit vulnerability database for known smart contract security findings. Filter by severity, vulnerability tags, and protocol category. Only HIGH and MEDIUM severity findings are returned.")]
     async fn search_findings(
         &self,
         Parameters(params): Parameters<SearchFindingsParams>,
@@ -153,7 +153,7 @@ impl ServerHandler for SoloditServer {
         ServerInfo::default()
             .with_instructions(
                 "Solodit vulnerability database for smart contract security auditing. \
-                 Search 50,000+ findings from top audit firms. Only CRITICAL, HIGH, \
+                 Search 50,000+ findings from top audit firms. Only HIGH \
                  and MEDIUM severity findings are surfaced.",
             )
     }
