@@ -543,14 +543,14 @@ Focus areas for the review approach:
 
 ## High-Level Tasks
 
-### 1. Dev Container Setup
-- [ ] Create `.devcontainer/` with Dockerfile and `devcontainer.json`
-- [ ] Base image selection (Ubuntu or Foundry official)
-- [ ] Install Foundry toolchain (forge, cast, anvil, chisel)
-- [ ] Install Python + Slither
-- [ ] Install Aderyn (Rust-based)
-- [ ] Install Chimera / Recon tooling (research exact install steps — see docs: https://github.com/Recon-Fuzz/recon-docs)
-- [ ] Install Echidna, Medusa, Halmos (Chimera deps)
+### 1. Dev Container Setup ✅
+- [x] Create `.devcontainer/` with Dockerfile and `devcontainer.json`
+- [x] Base image selection (Ubuntu or Foundry official)
+- [x] Install Foundry toolchain (forge, cast, anvil, chisel)
+- [x] Install Python + Slither
+- [x] Install Aderyn (Rust-based)
+- [x] Install Chimera / Recon tooling (research exact install steps — see docs: https://github.com/Recon-Fuzz/recon-docs)
+- [x] Install Echidna, Medusa, Halmos (Chimera deps)
 
 ### 2. Network Isolation (DEFERRED)
 
@@ -574,14 +574,18 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [ ] Test: verify forge install, pip install, cargo install work through the proxy
 - [ ] Test: verify arbitrary outbound connections are blocked
 
-### 3. Repo Cleanup (execute Drop + Adapt lists above)
-- [ ] Remove all items from the Drop list
-- [ ] Execute all adaptations from the Adapt list
-- [ ] Verify nothing is broken after cleanup (`forge build`)
+### 3. Repo Cleanup (execute Drop + Adapt lists above) ✅
+- [x] Remove all items from the Drop list
+- [x] Execute all adaptations from the Adapt list
+- [x] Verify nothing is broken after cleanup (`forge build`)
 
-### 4. MCP + Solodit Integration
-- [ ] Research Solodit API capabilities (endpoints, filtering, rate limits)
-- [ ] Build MCP server for Solodit (query by category, severity, sub-category)
+### 4. MCP + Solodit Integration ✅
+- [x] Research Solodit API capabilities (endpoints, filtering, rate limits)
+- [x] Build MCP server for Solodit (query by category, severity, sub-category)
+- [x] E2E test with live API — search, tag filter, get_finding, list_tags, list_categories
+- [x] Fix API contract mismatches (impact values, object filters, response deserialization)
+- [x] Auth-aware fallback (401/403 fails loud, network/5xx/404 falls back)
+- [x] Unit + integration tests (21 unit, 3 live #[ignore])
 - [ ] Define bug taxonomy mapping: Solodit categories → specialist domains
 - [ ] Test filtering quality (are the right bugs reaching the right specialists?)
 
