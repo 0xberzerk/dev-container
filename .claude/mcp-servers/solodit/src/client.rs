@@ -156,8 +156,8 @@ pub struct Finding {
 }
 
 /// Compact finding format for search results (strips verbose nested data)
-#[derive(Debug, Serialize)]
-struct CompactFinding {
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct CompactFinding {
     slug: String,
     title: String,
     impact: String,
@@ -535,4 +535,381 @@ fn known_protocol_categories() -> Vec<&'static str> {
         "Oracle", "Insurance", "Privacy", "Payments", "Staking",
         "Yield Aggregator", "Governance", "Launchpad",
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- sanitize_impact --
+
+    #[test]
+    fn sanitize_impact_defaults_to_high_medium_when_none() {
+        let result = sanitize_impact(None);
+        assert_eq!(result, vec!["HIGH", "MEDIUM"]);
+    }
+
+    #[test]
+    fn sanitize_impact_defaults_to_high_medium_when_empty() {
+        let result = sanitize_impact(Some(vec![]));
+        assert_eq!(result, vec!["HIGH", "MEDIUM"]);
+    }
+
+    #[test]
+    fn sanitize_impact_strips_critical() {
+        let result = sanitize_impact(Some(vec!["CRITICAL".into(), "HIGH".into()]));
+        assert_eq!(result, vec!["HIGH"]);
+    }
+
+    #[test]
+    fn sanitize_impact_strips_low_and_gas() {
+        let result = sanitize_impact(Some(vec!["LOW".into(), "GAS".into(), "MEDIUM".into()]));
+        assert_eq!(result, vec!["MEDIUM"]);
+    }
+
+    #[test]
+    fn sanitize_impact_normalizes_case() {
+        let result = sanitize_impact(Some(vec!["high".into(), "Medium".into()]));
+        assert_eq!(result, vec!["HIGH", "MEDIUM"]);
+    }
+
+    #[test]
+    fn sanitize_impact_defaults_when_all_stripped() {
+        let result = sanitize_impact(Some(vec!["LOW".into(), "CRITICAL".into(), "GAS".into()]));
+        assert_eq!(result, vec!["HIGH", "MEDIUM"]);
+    }
+
+    // -- SearchRequest serialization (API contract) --
+
+    #[test]
+    fn search_request_serializes_tags_as_value_objects() {
+        let req = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: String::new(),
+                impact: vec![],
+                tags: vec![TagFilter { value: "ERC4626".into() }],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let json: serde_json::Value = serde_json::to_value(&req).unwrap();
+
+        // tags must be [{value: "ERC4626"}]
+        let tags = json["filters"]["tags"].as_array().unwrap();
+        assert_eq!(tags[0]["value"], "ERC4626");
+
+        // languages must be [{value: "Solidity"}]
+        let langs = json["filters"]["languages"].as_array().unwrap();
+        assert_eq!(langs[0]["value"], "Solidity");
+    }
+
+    #[test]
+    fn search_request_uses_camel_case_field_names() {
+        let req = SearchRequest {
+            page: 1,
+            page_size: 20,
+            filters: SearchFilters {
+                keywords: "test".into(),
+                impact: vec!["HIGH".into()],
+                tags: vec![],
+                protocol_categories: vec!["Lending".into()],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let json: serde_json::Value = serde_json::to_value(&req).unwrap();
+
+        assert!(json.get("pageSize").is_some(), "pageSize must be camelCase");
+        assert!(json["filters"].get("sortField").is_some(), "sortField must be camelCase");
+        assert!(json["filters"].get("sortDirection").is_some(), "sortDirection must be camelCase");
+        assert!(json["filters"].get("protocolCategories").is_some(), "protocolCategories must be camelCase");
+    }
+
+    #[test]
+    fn search_request_skips_empty_optional_filters() {
+        let req = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: String::new(),
+                impact: vec![],
+                tags: vec![],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let json: serde_json::Value = serde_json::to_value(&req).unwrap();
+
+        assert!(json["filters"].get("keywords").is_none(), "empty keywords should be skipped");
+        assert!(json["filters"].get("impact").is_none(), "empty impact should be skipped");
+        assert!(json["filters"].get("tags").is_none(), "empty tags should be skipped");
+        assert!(json["filters"].get("protocolCategories").is_none(), "empty categories should be skipped");
+    }
+
+    // -- Finding deserialization (API response) --
+
+    #[test]
+    fn finding_deserializes_from_api_response() {
+        let api_json = serde_json::json!({
+            "slug": "test-finding-cyfrin-protocol-markdown",
+            "title": "Test Finding",
+            "impact": "HIGH",
+            "quality_score": 4.5,
+            "firm_name": "Cyfrin",
+            "protocol_name": "Test Protocol",
+            "summary": "A test finding summary",
+            "content": "Full content here",
+            "issues_issuetagscore": [
+                {"tags_tag": {"title": "Reentrancy"}},
+                {"tags_tag": {"title": "ERC4626"}}
+            ],
+            "protocols_protocol": {
+                "name": "Test Protocol",
+                "protocols_protocolcategoryscore": [
+                    {"protocols_protocolcategory": {"title": "Lending"}, "score": 1}
+                ]
+            }
+        });
+        let finding: Finding = serde_json::from_value(api_json).unwrap();
+
+        assert_eq!(finding.slug, "test-finding-cyfrin-protocol-markdown");
+        assert_eq!(finding.impact, "HIGH");
+        assert_eq!(finding.firm_name, "Cyfrin");
+        assert_eq!(finding.issues_issuetagscore.len(), 2);
+    }
+
+    #[test]
+    fn finding_handles_missing_optional_fields() {
+        let minimal = serde_json::json!({
+            "slug": "minimal",
+            "title": "Minimal",
+            "impact": "MEDIUM"
+        });
+        let finding: Finding = serde_json::from_value(minimal).unwrap();
+
+        assert_eq!(finding.slug, "minimal");
+        assert!(finding.content.is_none());
+        assert!(finding.protocols_protocol.is_none());
+        assert!(finding.issues_issuetagscore.is_empty());
+    }
+
+    // -- CompactFinding::from --
+
+    #[test]
+    fn compact_finding_extracts_tags_from_nested_structure() {
+        let finding = Finding {
+            slug: "test".into(),
+            title: "Test".into(),
+            impact: "HIGH".into(),
+            quality_score: 5.0,
+            firm_name: "Cyfrin".into(),
+            protocol_name: "Proto".into(),
+            summary: None,
+            content: None,
+            issues_issuetagscore: vec![
+                serde_json::json!({"tags_tag": {"title": "Reentrancy"}}),
+                serde_json::json!({"tags_tag": {"title": "Flash Loan"}}),
+            ],
+            protocols_protocol: None,
+        };
+        let compact = CompactFinding::from(&finding);
+
+        assert_eq!(compact.tags, vec!["Reentrancy", "Flash Loan"]);
+    }
+
+    #[test]
+    fn compact_finding_extracts_category_from_nested_protocol() {
+        let finding = Finding {
+            slug: "test".into(),
+            title: "Test".into(),
+            impact: "HIGH".into(),
+            quality_score: 5.0,
+            firm_name: "Cyfrin".into(),
+            protocol_name: "Proto".into(),
+            summary: None,
+            content: None,
+            issues_issuetagscore: vec![],
+            protocols_protocol: Some(serde_json::json!({
+                "protocols_protocolcategoryscore": [
+                    {"protocols_protocolcategory": {"title": "Dexes"}, "score": 1}
+                ]
+            })),
+        };
+        let compact = CompactFinding::from(&finding);
+
+        assert_eq!(compact.category, "Dexes");
+    }
+
+    #[test]
+    fn compact_finding_defaults_empty_when_no_tags_or_category() {
+        let finding = Finding {
+            slug: "test".into(),
+            title: "Test".into(),
+            impact: "MEDIUM".into(),
+            quality_score: 3.0,
+            firm_name: "".into(),
+            protocol_name: "".into(),
+            summary: None,
+            content: None,
+            issues_issuetagscore: vec![],
+            protocols_protocol: None,
+        };
+        let compact = CompactFinding::from(&finding);
+
+        assert!(compact.tags.is_empty());
+        assert_eq!(compact.category, "");
+    }
+
+    // -- make_cache_key --
+
+    #[test]
+    fn cache_key_is_deterministic() {
+        let req = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: "test".into(),
+                impact: vec!["HIGH".into()],
+                tags: vec![],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let key1 = make_cache_key("search", &req).unwrap();
+        let key2 = make_cache_key("search", &req).unwrap();
+        assert_eq!(key1, key2);
+        assert!(key1.starts_with("search:"));
+    }
+
+    #[test]
+    fn cache_key_differs_for_different_inputs() {
+        let req1 = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: "reentrancy".into(),
+                impact: vec![],
+                tags: vec![],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let req2 = SearchRequest {
+            page: 1,
+            page_size: 10,
+            filters: SearchFilters {
+                keywords: "flash loan".into(),
+                impact: vec![],
+                tags: vec![],
+                protocol_categories: vec![],
+                languages: vec![LanguageFilter { value: "Solidity".into() }],
+                sort_field: "Quality".into(),
+                sort_direction: "Desc".into(),
+            },
+        };
+        let key1 = make_cache_key("search", &req1).unwrap();
+        let key2 = make_cache_key("search", &req2).unwrap();
+        assert_ne!(key1, key2);
+    }
+
+    // -- TtlCache --
+
+    #[tokio::test]
+    async fn cache_returns_none_for_missing_key() {
+        let cache = TtlCache::new();
+        assert!(cache.get("missing").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn cache_stores_and_retrieves_value() {
+        let cache = TtlCache::new();
+        cache
+            .set("key".into(), serde_json::json!("value"), Duration::from_secs(60))
+            .await;
+        let result = cache.get("key").await;
+        assert_eq!(result, Some(serde_json::json!("value")));
+    }
+
+    #[tokio::test]
+    async fn cache_returns_none_after_expiry() {
+        let cache = TtlCache::new();
+        cache
+            .set("key".into(), serde_json::json!("value"), Duration::from_millis(1))
+            .await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(cache.get("key").await.is_none());
+    }
+
+    // -- Integration tests (require CYFRIN_API_KEY, hit live API) --
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_search_returns_results() {
+        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
+        let client = SoloditClient::new(&api_key).unwrap();
+        let result = client
+            .search_findings("reentrancy", None, None, None, None, "Quality", "Desc", 1, 5)
+            .await
+            .unwrap();
+
+        let count = result["count"].as_u64().unwrap_or(0);
+        assert!(count > 0, "Expected results for 'reentrancy' search");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_search_with_tag_filter() {
+        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
+        let client = SoloditClient::new(&api_key).unwrap();
+        let result = client
+            .search_findings(
+                "",
+                Some(vec!["HIGH".into()]),
+                Some(vec!["ERC4626".into()]),
+                None,
+                None,
+                "Quality",
+                "Desc",
+                1,
+                5,
+            )
+            .await
+            .unwrap();
+
+        let findings = result["findings"].as_array().unwrap();
+        assert!(!findings.is_empty(), "Expected ERC4626+HIGH results");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_list_tags() {
+        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
+        let client = SoloditClient::new(&api_key).unwrap();
+        let result = client.list_tags().await.unwrap();
+
+        let tags = result.as_array().unwrap();
+        assert!(tags.len() > 10, "Expected many tags");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_list_protocol_categories() {
+        let api_key = std::env::var("CYFRIN_API_KEY").expect("CYFRIN_API_KEY required");
+        let client = SoloditClient::new(&api_key).unwrap();
+        let result = client.list_protocol_categories().await.unwrap();
+
+        let cats = result.as_array().unwrap();
+        assert!(cats.len() > 5, "Expected many categories");
+    }
 }
