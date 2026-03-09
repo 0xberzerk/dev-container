@@ -434,8 +434,9 @@ mod tests {
         kb.ingest(&params, findings).unwrap();
         kb.curate(&CurationContext::default()).unwrap();
 
-        // Mark one as critical
+        // Mark one as critical, then re-curate to re-sort
         kb.set_curation("solodit:critical-a", CurationStatus::Critical, None).unwrap();
+        kb.curate(&CurationContext::default()).unwrap();
 
         // Query with budget of 2
         let result = kb

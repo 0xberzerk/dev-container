@@ -2,6 +2,9 @@
   "mcpServers": {
     "solodit": {
       "command": ".claude/mcp-servers/solodit/run.sh"
+    },
+    "knowledge-base": {
+      "command": ".claude/mcp-servers/knowledge-base/run.sh"
     }
   }
 }
