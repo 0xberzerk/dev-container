@@ -3,3 +3,4 @@ pub mod fingerprint;
 pub mod store;
 pub mod raw;
 pub mod curate;
+pub mod query;
