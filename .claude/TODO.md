@@ -607,23 +607,23 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [x] Integration test: verify normalized report round-trips correctly
 
 ### 7. Agent Pipeline Implementation
-- [ ] Define `@audit` tag parser (extract pre-pipeline + post-pipeline tags from source files)
-- [ ] Define Codebase Profile schema (orchestrator output format — includes static analysis highlights)
-- [ ] Define Finding schema (specialist output format — includes `source`, `audit_tag_reference`, `fuzz_evidence`, `static_analysis_corroboration`)
-- [ ] Implement Architect Pass 1 (validator + gap finder) agent
-- [ ] Implement specialist agent template (parameterized by domain + curated KB entries + @audit-attention tags)
-- [ ] Implement Heuristics specialist (logic bugs, economic issues — explicitly excludes static analysis scope)
-- [ ] Implement Fuzz Agent — coverage engineer (see Fuzz Agent section):
-  - [ ] Target selector (state-changing + state-reading functions only, exclude pure)
-  - [ ] Foundry fuzz test generator (bounded + unbounded entry points)
-  - [ ] Chimera/Recon test generator (stateful exploration)
-  - [ ] Corpus reader + unwanted revert fixer loop (iterate until coverage stabilizes)
-  - [ ] Ghost variable tracking + invariant assertion generation
-  - [ ] Raw output format (coverage, gaps, violations, revert log — no interpretation)
-- [ ] Implement fuzz results → specialist routing in Consolidator
-- [ ] Implement Consolidator agent (dedup across specialists + fuzz + static, map to @audit tags)
-- [ ] Implement Architect Pass 2 (intersection auditor — cross-references fuzz + specialist findings)
-- [ ] Implement Final Report generator (see Report Format section)
+- [x] Define `@audit` tag parser (embedded in Architect P1 prompt — Grep patterns for @audit-* tags)
+- [x] Define Codebase Profile schema (JSON schema in Architect P1 output format)
+- [x] Define Finding schema (JSON schema in specialist/heuristics output format — includes `source`, `audit_tag_reference`, `fuzz_corroboration`, `static_analysis_corroboration`)
+- [x] Implement Architect Pass 1 (validator + gap finder) agent
+- [x] Implement specialist agent template (parameterized by domain + curated KB entries + @audit-attention tags)
+- [x] Implement Heuristics specialist (logic bugs, economic issues — explicitly excludes static analysis scope)
+- [x] Implement Fuzz Agent — coverage engineer (see Fuzz Agent section):
+  - [x] Target selector (state-changing + state-reading functions only, exclude pure)
+  - [x] Foundry fuzz test generator (bounded + unbounded entry points)
+  - [ ] Chimera/Recon test generator (stateful exploration) — deferred, needs Recon docs deep-dive
+  - [x] Corpus reader + unwanted revert fixer loop (iterate until coverage stabilizes)
+  - [x] Ghost variable tracking + invariant assertion generation
+  - [x] Raw output format (coverage, gaps, violations, revert log — no interpretation)
+- [x] Implement fuzz results → specialist routing in Consolidator
+- [x] Implement Consolidator agent (dedup across specialists + fuzz + static, map to @audit tags)
+- [x] Implement Architect Pass 2 (intersection auditor — cross-references fuzz + specialist findings)
+- [x] Implement Final Report generator (see Report Format section)
 - [ ] End-to-end pipeline test on a known vulnerable codebase
 
 ### 8. Auditor Feedback Loop
