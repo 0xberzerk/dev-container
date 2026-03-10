@@ -589,22 +589,22 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [ ] Define bug taxonomy mapping: Solodit categories → specialist domains
 - [ ] Test filtering quality (are the right bugs reaching the right specialists?)
 
-### 5. Knowledge Base (Local Curated Vulnerability Index)
-- [ ] Design storage format (structured JSON, query fingerprinting, directory layout)
-- [ ] Implement Layer 1 — Raw Cache (fetch, fingerprint, TTL dedup, `--refresh`)
-- [ ] Implement Layer 2 — Curated Index (scoring, curation status: unreviewed/useful/noise/critical)
-- [ ] Implement Layer 3 — Agent Consumption API (domain-scoped queries, ranking, context budget truncation)
-- [ ] Implement auditor pre-seeding workflow (import known bugs, personal notes, bookmarked findings)
-- [ ] Implement feedback loop (Architect auto-curates based on which bugs led to findings)
-- [ ] Define refresh strategy (per-audit, periodic, on-demand)
+### 5. Knowledge Base (Local Curated Vulnerability Index) ✅
+- [x] Design storage format (structured JSON, query fingerprinting, directory layout)
+- [x] Implement Layer 1 — Raw Cache (fetch, fingerprint, TTL dedup, `--refresh`)
+- [x] Implement Layer 2 — Curated Index (scoring, curation status: unreviewed/useful/noise/critical)
+- [x] Implement Layer 3 — Agent Consumption API (domain-scoped queries, ranking, context budget truncation)
+- [x] Implement auditor pre-seeding workflow (import known bugs, personal notes, bookmarked findings)
+- [x] Implement feedback loop (Architect auto-curates based on which bugs led to findings)
+- [x] Define refresh strategy (per-audit, periodic, on-demand)
 
-### 6. Static Analysis Integration
-- [ ] Define unified JSON schema for `analysis/static-analysis.json`
-- [ ] Implement Slither runner (→ `analysis/slither.json`)
-- [ ] Implement Aderyn runner (→ `analysis/aderyn.json`)
-- [ ] Implement normalizer: merge Slither + Aderyn → `analysis/static-analysis.json` (deduplicated, unified schema)
-- [ ] Add `analysis/` to `.gitignore`
-- [ ] Integration test: verify Architect P1 reads `analysis/static-analysis.json` correctly
+### 6. Static Analysis Integration ✅
+- [x] Define unified JSON schema for `analysis/static-analysis.json`
+- [x] Implement Slither runner (→ `analysis/slither.json`)
+- [x] Implement Aderyn runner (→ `analysis/aderyn.json`)
+- [x] Implement normalizer: merge Slither + Aderyn → `analysis/static-analysis.json` (deduplicated, unified schema)
+- [x] Add `analysis/` to `.gitignore`
+- [x] Integration test: verify normalized report round-trips correctly
 
 ### 7. Agent Pipeline Implementation
 - [ ] Define `@audit` tag parser (extract pre-pipeline + post-pipeline tags from source files)

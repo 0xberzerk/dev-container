@@ -5,6 +5,9 @@
     },
     "knowledge-base": {
       "command": ".claude/mcp-servers/knowledge-base/run.sh"
+    },
+    "static-analysis": {
+      "command": ".claude/mcp-servers/static-analysis/run.sh"
     }
   }
 }
