@@ -626,11 +626,11 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [x] Implement Final Report generator (see Report Format section)
 - [ ] End-to-end pipeline test on a known vulnerable codebase
 
-### 8. Auditor Feedback Loop
-- [ ] Implement post-pipeline @audit tag parser (`@audit-confirmed`, `@audit-false-positive`, `@audit-discuss`, `@audit-escalate`)
-- [ ] Implement @audit-discuss handler (focused conversation about specific concern)
-- [ ] Implement @audit-escalate handler (re-trigger specialist analysis on specific area)
-- [ ] Implement feedback → KB flow (false positives deprioritize similar patterns, confirmed → useful)
+### 8. Auditor Feedback Loop ✅
+- [x] Implement post-pipeline @audit tag parser (`@audit-confirmed`, `@audit-false-positive`, `@audit-discuss`, `@audit-escalate`) — `feedback.md` agent
+- [x] Implement @audit-discuss handler (focused conversation about specific concern) — `discuss.md` agent
+- [x] Implement @audit-escalate handling — feedback agent flags escalations, auditor manually re-triggers specialist/architect-p2
+- [x] Implement feedback → KB flow — feedback agent produces `kb_feedback` section with mark_useful/mark_noise/mark_critical, auditor applies via `kb_apply_feedback`
 
 ### 9. Skills
 - [ ] `/poc` — POC writer skill (human-invoked only, for specific confirmed findings)
