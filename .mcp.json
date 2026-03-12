@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "solodit": {
+      "command": ".claude/mcp-servers/solodit/run.sh"
+    }
+  }
+}
