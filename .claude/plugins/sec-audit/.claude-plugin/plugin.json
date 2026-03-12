@@ -7,5 +7,6 @@
   },
   "keywords": ["security", "audit", "solidity", "foundry", "slither", "fuzzing"],
   "agents": "./agents/",
+  "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
 }

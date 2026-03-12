@@ -624,7 +624,7 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [x] Implement Consolidator agent (dedup across specialists + fuzz + static, map to @audit tags)
 - [x] Implement Architect Pass 2 (intersection auditor — cross-references fuzz + specialist findings)
 - [x] Implement Final Report generator (see Report Format section)
-- [ ] End-to-end pipeline test on a known vulnerable codebase
+- ~~End-to-end pipeline test~~ — moved to Task 12
 
 ### 8. Auditor Feedback Loop ✅
 - [x] Implement post-pipeline @audit tag parser (`@audit-confirmed`, `@audit-false-positive`, `@audit-discuss`, `@audit-escalate`) — `feedback.md` agent
@@ -632,11 +632,25 @@ Deferred until the core tooling is running. Layer in as a separate Docker Compos
 - [x] Implement @audit-escalate handling — feedback agent flags escalations, auditor manually re-triggers specialist/architect-p2
 - [x] Implement feedback → KB flow — feedback agent produces `kb_feedback` section with mark_useful/mark_noise/mark_critical, auditor applies via `kb_apply_feedback`
 
-### 9. Skills
-- [ ] `/poc` — POC writer skill (human-invoked only, for specific confirmed findings)
-- [ ] `/audit-start` — launch the agent pipeline (parse tags, run static analysis, trigger Architect P1)
-- [ ] `/audit-review` — process post-pipeline @audit tags and enter feedback dialogue
-- [ ] Evaluate and implement additional audit-focused skills
+### 9. Skills ✅
+- [x] `/poc` — POC writer skill (human-invoked only, for specific confirmed findings)
+- [x] `/audit-start` — launch the agent pipeline (parse tags, run static analysis, trigger Architect P1)
+- [x] `/audit-review` — process post-pipeline @audit tags and enter feedback dialogue
+- [x] Evaluate and implement additional audit-focused skills (evaluated — no additional skills needed)
+- [x] Move `/review-contract` into sec-audit plugin (consolidate all skills in one place)
 
-### 10. CI/CD Adaptation
-- [ ] Adapt or remove GitHub Actions for audit workflows
+### 10. CI/CD Adaptation ✅
+- [x] Adapt or remove GitHub Actions for audit workflows (already removed in Task 3; no CI fits audit workflow; `[profile.ci]` kept as local "heavier fuzz" toggle)
+
+### 11. Fine-Tuning — Market Comparison
+- [ ] Research best-in-class audit tools and agent pipelines (existing products, open-source frameworks, competitor approaches)
+- [ ] Compare agent prompts, pipeline structure, and skill design against market alternatives
+- [ ] Identify gaps, missing patterns, and improvement opportunities
+- [ ] Apply refinements to agents, skills, and pipeline flow
+
+### 12. End-to-End Pipeline Test
+- [ ] Select a known vulnerable codebase (real audit target with known findings)
+- [ ] Run full pipeline: `/audit-start` → review report → `/audit-review` → `/poc`
+- [ ] Validate: did the pipeline catch the known vulnerabilities?
+- [ ] Measure: false positive rate, coverage gaps, agent quality
+- [ ] Fix issues discovered during the test run
