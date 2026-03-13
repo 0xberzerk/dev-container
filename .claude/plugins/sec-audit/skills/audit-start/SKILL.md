@@ -53,19 +53,32 @@ Wait for it to complete. Then read `analysis/codebase-profile.json` to get:
 
 Report to auditor: what the Architect found, which specialists it's launching, how many fuzz targets.
 
+## Phase 1.5 — Maturity Assessment
+
+Launch the `maturity` agent:
+
+> Assess code maturity across 9 quality categories. Read all source files in src/ and test files in test/. Use analysis/codebase-profile.json for the contract list. Write output to analysis/maturity-assessment.json.
+
+Wait for it to complete. Report: overall score, any weak areas (score <= 2.0).
+
+Then read `analysis/maturity-assessment.json` to extract `weak_areas` — these will be passed to specialists in Phase 2.
+
 ## Phase 2 — Parallel Execution
 
 Launch ALL of the following in parallel using the Agent tool:
 
 ### Specialists (from Architect's plan)
 For each specialist in the codebase profile's `specialist_plan`:
-- Launch the `specialist` agent with the domain assignment, scoped files, and relevant @audit-attention tags from the profile
+- Launch the `specialist` agent with the domain assignment, scoped files, relevant @audit-attention tags from the profile, AND `maturity_weak_areas` relevant to that specialist's scoped files
 
 ### Heuristics
 - Launch the `heuristics` agent — it always runs regardless of what specialists are launched
 
 ### Fuzz Engineer
 - Launch the `fuzz-engineer` agent with the fuzz targets from the codebase profile
+
+### Storage Safety
+- Launch the `storage-safety` agent — it always runs. Pass `analysis/codebase-profile.json` context for proxy/upgrade patterns.
 
 **All of these run in parallel.** Do not wait for one before launching others.
 
@@ -79,19 +92,35 @@ Launch the `consolidator` agent:
 
 Wait for completion. Report: total findings by severity, dedup stats, fuzz routing summary.
 
+## Phase 3.5 — Falsification
+
+Launch the `falsification` agent:
+
+> Challenge every finding in analysis/consolidated-findings.json. For each finding, trace the exploit path through the actual source code, check for existing mitigations, and attempt to construct a counterargument. Assign verdict: survived, weakened, or falsified. Write output to analysis/falsification-results.json.
+
+Wait for completion. Report: how many findings survived, weakened, falsified.
+
 ## Phase 4 — Architect Pass 2
 
 Launch the `architect-p2` agent:
 
-> Perform cross-domain intersection analysis. Read the codebase profile, consolidated findings, and fuzz results. Look for bugs that emerge from domain interactions, multi-step attack chains, and blind spots. Write output to analysis/intersection-analysis.json.
+> Perform cross-domain intersection analysis. Read the codebase profile, consolidated findings, falsification results, and fuzz results. Deprioritize falsified findings. Look for bugs that emerge from domain interactions, multi-step attack chains, and blind spots. Write output to analysis/intersection-analysis.json.
 
 Wait for completion. Report: any intersection findings discovered, blind spots identified.
+
+## Phase 4.5 — Triage
+
+Launch the `triage` agent:
+
+> Re-evaluate severity of every finding with full pipeline context. Read consolidated findings, falsification results, intersection analysis, and maturity assessment. Assign final severity and exploitability rating. Write output to analysis/triage-results.json.
+
+Wait for completion. Report: severity changes (upgrades, downgrades, confirmed, false positives).
 
 ## Phase 5 — Report Generation
 
 Launch the `report-generator` agent:
 
-> Generate the final audit report from all pipeline outputs. Read codebase profile, consolidated findings, intersection analysis, fuzz results, and static analysis. Write the report to analysis/final-report.md.
+> Generate the final audit report from all pipeline outputs. Read codebase profile, consolidated findings, falsification results, triage results, intersection analysis, maturity assessment, fuzz results, and static analysis. Use triage final severity for finding ordering. Write the report to analysis/final-report.md.
 
 Wait for completion.
 
@@ -99,9 +128,14 @@ Wait for completion.
 
 Report to the auditor:
 1. Pipeline completed successfully (or with warnings if any phase had issues)
-2. Summary: total findings by severity across all sources
-3. Key output files:
+2. Summary: total findings by **triage final severity** across all sources
+3. Maturity score: overall and any weak areas
+4. Falsification: how many survived / weakened / falsified
+5. Key output files:
    - `analysis/final-report.md` — the full report
+   - `analysis/triage-results.json` — final severity assignments
    - `analysis/consolidated-findings.json` — structured findings data
+   - `analysis/maturity-assessment.json` — code quality scorecard
+   - `analysis/falsification-results.json` — challenge verdicts
    - `analysis/codebase-profile.json` — codebase map
-4. Next step: review the report, then annotate source files with post-pipeline `@audit` tags and run `/audit-review`
+6. Next step: review the report, then annotate source files with post-pipeline `@audit` tags and run `/audit-review`

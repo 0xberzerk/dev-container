@@ -22,9 +22,12 @@ You do **not** discover new findings. You format and organize what the pipeline 
 Read these files:
 1. `analysis/codebase-profile.json` — Architect P1 (architecture overview)
 2. `analysis/consolidated-findings.json` — Consolidator (all findings, deduped)
-3. `analysis/intersection-analysis.json` — Architect P2 (cross-domain findings)
-4. `analysis/fuzz-results.json` — Fuzz Agent (coverage data)
-5. `analysis/static-analysis.json` — Static analysis (Slither/Aderyn)
+3. `analysis/falsification-results.json` — Falsification Agent (challenge verdicts)
+4. `analysis/triage-results.json` — Triage Agent (final severity + exploitability)
+5. `analysis/intersection-analysis.json` — Architect P2 (cross-domain findings)
+6. `analysis/maturity-assessment.json` — Maturity Assessment (code quality scorecard)
+7. `analysis/fuzz-results.json` — Fuzz Agent (coverage data)
+8. `analysis/static-analysis.json` — Static analysis (Slither/Aderyn)
 
 ## Output
 
@@ -47,6 +50,12 @@ Write the report to `analysis/final-report.md`.
 - Critical: {count}
 - High: {count}
 - Medium: {count}
+- False positives identified: {count}
+- Downgraded: {count}
+
+**Pipeline confidence:**
+- Falsification: {survived}/{total} findings survived challenge
+- Maturity score: {overall}/4.0
 
 **@audit tag coverage:**
 - Auditor concerns confirmed: {count}/{total}
@@ -79,12 +88,36 @@ Write the report to `analysis/final-report.md`.
 
 ---
 
-## 3. Findings
+## 3. Code Maturity Assessment
+
+**Overall score:** {score}/4.0
+
+| Category | Score | Assessment |
+|---|---|---|
+| Documentation | {score}/4.0 | {one-line assessment} |
+| Test Coverage | {score}/4.0 | {one-line assessment} |
+| Access Control | {score}/4.0 | {one-line assessment} |
+| Upgrade Safety | {score}/4.0 | {one-line assessment} |
+| Error Handling | {score}/4.0 | {one-line assessment} |
+| Event Coverage | {score}/4.0 | {one-line assessment} |
+| Input Validation | {score}/4.0 | {one-line assessment} |
+| Code Complexity | {score}/4.0 | {one-line assessment} |
+| Dependency Management | {score}/4.0 | {one-line assessment} |
+
+### Weak Areas (score <= 2.0)
+{For each weak area: category, risk note, affected files}
+
+---
+
+## 4. Findings
+
+Use **triage final severity** (from `triage-results.json`), not original severity, for ordering and display.
 
 ### Critical
 
 #### [F-XXX] {title}
-**Severity:** Critical
+**Original severity:** {from consolidator} | **Final severity:** {from triage}
+**Exploitability:** {proven | likely | theoretical | unlikely}
 **Location:** `{file}:{line}` — `{function}`
 **Found by:** {specialist(s)}
 
@@ -95,6 +128,8 @@ Write the report to `analysis/final-report.md`.
 1. {step}
 2. {step}
 3. {step}
+
+**Falsification:** {survived | weakened | falsified} — {one-line verdict reasoning}
 
 **References:**
 - @audit tag: {tag text if any}
@@ -112,9 +147,17 @@ Write the report to `analysis/final-report.md`.
 
 {same format per finding}
 
+### Downgraded
+
+{same format — findings originally higher severity, reduced by triage}
+
+### False Positives
+
+{For each: finding ID, original severity, falsification counterargument, triage reasoning}
+
 ---
 
-## 4. Intersection Analysis
+## 5. Intersection Analysis
 
 {For each intersection finding from Architect P2}
 
@@ -130,7 +173,7 @@ Write the report to `analysis/final-report.md`.
 
 ---
 
-## 5. Fuzz Coverage Summary
+## 6. Fuzz Coverage Summary
 
 **Functions reached:** {count}/{total state-changing}
 **Invariants tested:** {count}
@@ -148,7 +191,7 @@ Write the report to `analysis/final-report.md`.
 
 ---
 
-## 6. Static Analysis Summary
+## 7. Static Analysis Summary
 
 **Slither:** {status} ({raw} raw, {kept} after severity filter)
 **Aderyn:** {status} ({raw} raw, {kept} after severity filter)
@@ -160,7 +203,21 @@ Write the report to `analysis/final-report.md`.
 
 ---
 
-## 7. Coverage Gaps & Blind Spots
+## 8. Falsification Summary
+
+**Findings challenged:** {total}
+| Verdict | Count |
+|---|---|
+| Survived | {count} |
+| Weakened | {count} |
+| Falsified | {count} |
+
+### Notable Falsifications
+{For each falsified or weakened finding: ID, title, counterargument summary}
+
+---
+
+## 9. Coverage Gaps & Blind Spots
 
 Areas that were **not analyzed** by any specialist, fuzz, or static analysis:
 
@@ -176,11 +233,13 @@ Areas that were **not analyzed** by any specialist, fuzz, or static analysis:
 
 ## Formatting Rules
 
-1. **Findings sorted by severity** — critical first, then high, then medium
+1. **Findings sorted by triage final severity** — critical first, then high, medium, downgraded, false positives last
 2. **Every finding has an ID** — F-001, F-002 for regular, X-001, X-002 for intersection
 3. **Location is always specific** — `file:line` format, never vague
 4. **Exploit scenarios are numbered steps** — concrete, actionable
 5. **References are linked** — @audit tags, Solodit entries, fuzz tests, static detectors
 6. **Tables for summaries, prose for findings** — use the right format for the content
-7. **Coverage gaps are prominent** — section 7 exists because what wasn't checked matters
-8. **No low/informational/gas** — only critical, high, medium findings appear
+7. **Falsification verdict on every finding** — the reader needs to know if it was challenged and survived
+8. **Triage overrides original severity** — display both but organize by final severity
+9. **Coverage gaps are prominent** — section 9 exists because what wasn't checked matters
+10. **No low/informational/gas** — only critical, high, medium findings appear (plus downgraded/false-positive from triage)

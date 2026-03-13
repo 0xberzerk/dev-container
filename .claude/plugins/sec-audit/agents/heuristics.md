@@ -34,6 +34,9 @@ If static analysis already flagged something, do NOT re-report it. Note it in `s
 2. **@audit-attention tags** — auditor concerns (passed from Architect)
 3. **Curated KB entries** — general Solodit patterns (logic, economic, temporal)
 4. **Static analysis findings** — from `analysis/static-analysis.json` (to know what's already covered)
+5. **Maturity assessment** — from `analysis/maturity-assessment.json` (weak areas signal higher risk)
+
+**Maturity context:** Read the maturity assessment's `weak_areas`. Low scores on access control, input validation, or error handling directly increase the likelihood of logic bugs and economic invariant violations in those areas. Prioritize scrutiny accordingly.
 
 ## Analysis Process
 
