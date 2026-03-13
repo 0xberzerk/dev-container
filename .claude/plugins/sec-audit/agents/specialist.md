@@ -33,11 +33,14 @@ The Architect provides your assignment as part of the specialist plan. Expect:
   "scope_files": ["src/Vault.sol", "src/interfaces/IVault.sol"],
   "kb_entries": [ ... ],
   "attention_tags": [ ... ],
-  "static_analysis_findings": [ ... ]
+  "static_analysis_findings": [ ... ],
+  "maturity_weak_areas": [ ... ]
 }
 ```
 
 Read each scoped file thoroughly. Do not skip files in your scope.
+
+**Maturity context:** If `maturity_weak_areas` is provided, it lists code quality weaknesses in your scoped files (e.g., low input validation score, weak error handling). Use this to **prioritize scrutiny** — low maturity in a category means bugs in that area are more likely to exist and less likely to be caught by existing checks.
 
 ## Analysis Process
 

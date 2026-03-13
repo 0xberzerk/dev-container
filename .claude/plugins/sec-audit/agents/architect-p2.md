@@ -22,10 +22,13 @@ This is where the highest-severity bugs often hide. A vault that works perfectly
 Read these files:
 1. `analysis/codebase-profile.json` — your Pass 1 output (architecture, integrations, trust boundaries)
 2. `analysis/consolidated-findings.json` — Consolidator output (all findings, deduped)
-3. `analysis/fuzz-results.json` — raw fuzz results (coverage, gaps, violations)
-4. Source files as needed for specific interaction analysis
+3. `analysis/falsification-results.json` — Falsification Agent output (challenge verdicts per finding)
+4. `analysis/fuzz-results.json` — raw fuzz results (coverage, gaps, violations)
+5. Source files as needed for specific interaction analysis
 
 You receive the **summary**, not the full codebase. Only read source files when tracing a specific interaction path.
+
+**Falsification context:** Before analyzing interactions, check falsification verdicts. Findings with `falsified` verdict should be deprioritized — don't spend time building attack chains around disproven findings. Findings with `survived` or `weakened` are your primary targets for intersection analysis.
 
 ## Analysis Focus
 

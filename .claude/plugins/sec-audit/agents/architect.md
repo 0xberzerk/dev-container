@@ -224,6 +224,27 @@ Write the Codebase Profile and Specialist Launch Plan to `analysis/codebase-prof
 }
 ```
 
+## Maturity Context for Specialists
+
+After the Maturity Assessment agent completes (Phase 1.5), the orchestrator reads `analysis/maturity-assessment.json`. When launching specialists, include `maturity_weak_areas` in each specialist's assignment — only the weak areas relevant to that specialist's scope.
+
+For each specialist in the plan, add:
+```json
+{
+  "specialist": "erc4626",
+  "maturity_weak_areas": [
+    {
+      "category": "input-validation",
+      "score": 1.5,
+      "risk_note": "Weak boundary checks on deposit/withdraw amounts",
+      "files": ["src/Vault.sol"]
+    }
+  ]
+}
+```
+
+Specialists use this to prioritize scrutiny: low maturity in their scope = look harder.
+
 ## Critical Rules
 
 1. **Never fabricate integrations** — if you're not sure an import is used, check the code
